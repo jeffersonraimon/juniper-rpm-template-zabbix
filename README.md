@@ -4,6 +4,9 @@ If you are running Juniper network devices and need to monitor SLA metrics acros
 
 This template enables you to collect and send RPM metrics from Juniper devices to Zabbix.
 
+![](print.png)
+
+
 ## 1. Juniper Device Configuration
 
 First, configure RPM tests on your Juniper device. Example:
