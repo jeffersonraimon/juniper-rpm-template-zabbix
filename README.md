@@ -100,6 +100,3 @@ for each configured test.
 
 Based on:
 [https://github.com/comsourcecz/zabbix-recipes/tree/master/juniper-rpm-template](https://github.com/comsourcecz/zabbix-recipes/tree/master/juniper-rpm-template)
-
-
-If you want, I can make a shorter version, a more “marketing-style” README, or add diagrams/workflow explanations.
