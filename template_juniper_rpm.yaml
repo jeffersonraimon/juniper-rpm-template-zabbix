@@ -1,0 +1,159 @@
+zabbix_export:
+  version: '6.0'
+  date: '2023-10-01T00:00:00Z'
+  groups:
+    - uuid: aa70c0bc8e764f68838b9c6c9307d0f1
+      name: Juniper
+    - uuid: 170eca1a5632462a925ef3606fc4429d
+      name: Templates
+  templates:
+    - uuid: 6aef0d430c9f42b48f5519ac3e4f91c0
+      template: 'Template Juniper RPM'
+      name: 'Template Juniper RPM'
+      description: |
+        Juniper RPM (Real time Performance Monitoring) template for Zabbix 6.0+.
+        Based on https://github.com/comsourcecz/zabbix-recipes
+        Discovers RPM tests via external SNMP discovery script and monitors
+        RTT, Jitter and PacketLoss for each probe.
+      groups:
+        - name: Juniper
+        - name: Templates
+      items:
+        - uuid: d75f3d1c43e44259ab53498c3d91bbba
+          name: RPMDATA
+          type: EXTERNAL
+          key: 'discovery_juniper_rpm.py[{HOST.CONN},{$SNMP_COMMUNITY}]'
+          trends: '0'
+          status: DISABLED
+          value_type: TEXT
+          description: |
+            Intentionally disabled. Enable temporarily to manually verify that the
+            discovery script runs correctly and returns valid JSON for this host.
+            Returns JSON with macros:
+              {#RPMUUID}  – OID suffix unique to each RPM test
+              {#RPMOWNER} – RPM probe owner name
+              {#RPMTEST}  – RPM probe test name
+          tags:
+            - tag: Application
+              value: RPM
+      discovery_rules:
+        - uuid: 5a59d8507c424a1faf6c8c87f1923500
+          name: 'Juniper RPM Discovery'
+          type: EXTERNAL
+          key: 'discovery_juniper_rpm.py[{HOST.CONN},{$SNMP_COMMUNITY}]'
+          delay: '300'
+          lifetime: '30d'
+          description: |
+            Discovers all RPM (Real time Performance Monitoring) tests on a Juniper device.
+            The script returns three macros per test:
+              {#RPMUUID}  = "3.73.83.80.49.6.84.69.83.84.49" – OID suffix unique to the RPM test
+              {#RPMOWNER} = "ISP1"  – RPM owner/probe name
+              {#RPMTEST}  = "Test1" – RPM test name
+          item_prototypes:
+            - uuid: 3b8e0b92fdbd4961a4c5324d07d61751
+              name: 'RTT {#RPMOWNER} test {#RPMTEST}'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.2636.3.50.1.1.1.2.{#RPMUUID}.1'
+              key: 'delay["{#RPMUUID}"]'
+              delay: '30'
+              history: 90d
+              trends: 365d
+              units: ms
+              description: 'Round-trip time for RPM probe {#RPMOWNER}/{#RPMTEST}'
+              tags:
+                - tag: Application
+                  value: RPM
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.001'
+            - uuid: 88cb0b3f90c94e1ca060b10cb9ef4e2d
+              name: 'Jitter {#RPMOWNER} test {#RPMTEST}'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.2636.3.50.1.1.1.2.{#RPMUUID}.2'
+              key: 'jitter["{#RPMUUID}"]'
+              delay: '30'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: ms
+              description: 'Jitter for RPM probe {#RPMOWNER}/{#RPMTEST}'
+              tags:
+                - tag: Application
+                  value: RPM
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.001'
+            - uuid: e793bbdba6fd48b3bf875b0c436bf5af
+              name: 'PacketLoss {#RPMOWNER} test {#RPMTEST}'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.2636.3.50.1.2.1.4.{#RPMUUID}.2'
+              key: 'PacketLoss["{#RPMUUID}"]'
+              delay: '30'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: '%'
+              description: 'Packet loss percentage for RPM probe {#RPMOWNER}/{#RPMTEST}'
+              tags:
+                - tag: Application
+                  value: RPM
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.000001'
+          trigger_prototypes:
+            - uuid: b203d4ffb8f94a77a080c5e772855916
+              expression: 'last(/Template Juniper RPM/PacketLoss["{#RPMUUID}"])>2'
+              name: '{#RPMOWNER} PacketLoss: {ITEM.LASTVALUE}'
+              priority: HIGH
+              description: 'Packet loss exceeded 2% for RPM probe {#RPMOWNER}/{#RPMTEST}'
+          graph_prototypes:
+            - uuid: 7f6c23806bee4276a12836e214a6f858
+              name: '{#RPMOWNER}:{#RPMTEST} GRAPH'
+              width: '900'
+              height: '200'
+              graph_items:
+                - color: 1A7C11
+                  item:
+                    host: 'Template Juniper RPM'
+                    key: 'delay["{#RPMUUID}"]'
+                - sortorder: '1'
+                  color: F63100
+                  item:
+                    host: 'Template Juniper RPM'
+                    key: 'jitter["{#RPMUUID}"]'
+                - sortorder: '2'
+                  color: 2774A4
+                  item:
+                    host: 'Template Juniper RPM'
+                    key: 'PacketLoss["{#RPMUUID}"]'
+      macros:
+        - macro: '{$SNMP_COMMUNITY}'
+          value: public
+          description: 'SNMPv2c community string for the Juniper device'
+      dashboards:
+        - uuid: 0f77ae3630c643ba80259561a127f067
+          name: 'Juniper RPM Dashboard'
+          pages:
+            - widgets:
+                - type: graphprototype
+                  name: 'RPM Graphs'
+                  width: '24'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: INTEGER
+                      name: rows
+                      value: '1'
+                    - type: INTEGER
+                      name: source_type
+                      value: '2'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        name: '{#RPMOWNER}:{#RPMTEST} GRAPH'
+                        host: 'Template Juniper RPM'
