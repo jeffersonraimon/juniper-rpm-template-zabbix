@@ -1,0 +1,1 @@
+# juniper-rpm-template-zabbix
